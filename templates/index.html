@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Password Security Simulator</title>
+    <style>
+        body { font-family: monospace; background: #1a1a2e; color: #eee; padding: 20px; }
+        .container { max-width: 800px; margin: 0 auto; }
+        h1 { color: #e94560; }
+        .card { background: #16213e; padding: 20px; margin: 15px 0; border-radius: 8px; }
+        input, select { background: #0f3460; color: #eee; border: 1px solid #e94560;
+                        padding: 8px; width: 60%; border-radius: 4px; }
+        button { background: #e94560; color: white; border: none; padding: 8px 16px;
+                 cursor: pointer; border-radius: 4px; margin-left: 8px; }
+        button:hover { background: #c73652; }
+        .result { background: #0f3460; padding: 12px; margin-top: 10px;
+                  border-radius: 4px; white-space: pre-wrap; font-size: 13px; }
+        .success { border-left: 4px solid #4ecca3; }
+        .fail { border-left: 4px solid #e94560; }
+        .warning { color: #f6c90e; font-size: 12px; margin-top: 5px; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>🔐 Password Security Simulator</h1>
+    <p style="color:#f6c90e">⚠️ Educational purposes only. All simulations are local.</p>
+
+    <!-- Hash Generator -->
+    <div class="card">
+        <h3>1. Hash a Password</h3>
+        <input type="text" id="hashInput" placeholder="Enter password to hash">
+        <select id="algorithm">
+            <option value="sha256">SHA-256</option>
+            <option value="md5">MD5 (weak)</option>
+            <option value="bcrypt">bcrypt (strong)</option>
+        </select>
+        <button onclick="hashPassword()">Hash It</button>
+        <div id="hashResult" class="result" style="display:none"></div>
+    </div>
+
+    <!-- Brute Force -->
+    <div class="card">
+        <h3>2. Brute Force Simulation</h3>
+        <p class="warning">⚠️ Only works on short passwords (max 4 chars) for demo speed</p>
+        <input type="text" id="bruteHash" placeholder="Paste SHA-256 hash here">
+        <select id="bruteAlgorithm">
+        <option value="sha256">SHA-256</option>
+        <option value="md5">MD5</option>
+        <option value="bcrypt">bcrypt</option>
+        </select>
+        <button onclick="runBruteForce()">Simulate Attack</button>
+        <div id="bruteResult" class="result" style="display:none"></div>
+    </div>
+
+    <!-- Dictionary Attack -->
+    <div class="card">
+        <h3>3. Dictionary Attack Simulation</h3>
+        <input type="text" id="dictHash" placeholder="Paste SHA-256 hash here">
+        <button onclick="runDictionary()">Run Dictionary Attack</button>
+        <div id="dictResult" class="result" style="display:none"></div>
+    </div>
+
+    <!-- Strength Checker -->
+    <div class="card">
+        <h3>4. Password Strength Checker</h3>
+        <input type="text" id="strengthInput" placeholder="Enter password to analyze">
+        <button onclick="checkStrength()">Analyze</button>
+        <div id="strengthResult" class="result" style="display:none"></div>
+    </div>
+</div>
+
+<script>
+async function hashPassword() {
+    const password = document.getElementById('hashInput').value;
+    const algorithm = document.getElementById('algorithm').value;
+    const res = await fetch('/api/hash', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({password, algorithm})
+    });
+    const data = await res.json();
+    showResult('hashResult', `Algorithm: ${data.algorithm}\nHash: ${data.hash}`, 'success');
+}
+
+async function runBruteForce() {
+    const hash = document.getElementById('bruteHash').value;
+    const algorithm = document.getElementById('bruteAlgorithm').value;
+    showResult('bruteResult', 'Running simulation...', '');
+    const res = await fetch('/api/brute-force', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({hash, max_length: 4, algorithm})
+    });
+    const data = await res.json();
+    const type = data.success ? 'success' : 'fail';
+    showResult('bruteResult', JSON.stringify(data, null, 2), type);
+}
+
+async function runDictionary() {
+    const hash = document.getElementById('dictHash').value;
+    const res = await fetch('/api/dictionary', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({hash})
+    });
+    const data = await res.json();
+    const type = data.success ? 'success' : 'fail';
+    showResult('dictResult', JSON.stringify(data, null, 2), type);
+}
+
+async function checkStrength() {
+    const password = document.getElementById('strengthInput').value;
+    const res = await fetch('/api/strength', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({password})
+    });
+    const data = await res.json();
+    showResult('strengthResult', 
+        `Score: ${data.score_label}\nCrack Time: ${data.crack_time_display}\nRules: ${data.rules_score}\n\nFeedback: ${JSON.stringify(data.feedback, null, 2)}`,
+        data.score >= 3 ? 'success' : 'fail'
+    );
+}
+
+function showResult(id, text, cssClass) {
+    const el = document.getElementById(id);
+    el.textContent = text;
+    el.className = `result ${cssClass}`;
+    el.style.display = 'block';
+}
+</script>
+</body>
+</html>
